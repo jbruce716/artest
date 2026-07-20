@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import AdminClient from "@/components/AdminClient";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -20,20 +22,19 @@ export default async function AdminPage() {
     );
   }
 
-  return (
-    <div className="flex-1 px-4 py-8 max-w-4xl mx-auto w-full">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Test Results</h1>
-        <p className="text-zinc-400 mt-1">
-          All reading test results from the kids.
-        </p>
-      </div>
-
-      <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-8 text-center">
-        <p className="text-zinc-500">
-          No test results yet. Results will appear here once kids start taking tests.
-        </p>
-      </div>
-    </div>
+  const books = await db.query(
+    `SELECT b.id, b.title, b.author, b.quiz_ready, b.chapter_count, b.generated_at,
+     (SELECT count(*) FROM artest.chapter_questions cq WHERE cq.book_id = b.id) as question_count
+     FROM artest.books b ORDER BY b.title`
   );
+
+  const results = await db.query(
+    `SELECT tr.id, tr.student_name, b.title as book_title, tr.score, tr.total_questions,
+     tr.percentage, tr.completed_at
+     FROM artest.test_results tr
+     LEFT JOIN artest.books b ON tr.book_id = b.id
+     ORDER BY tr.completed_at DESC LIMIT 50`
+  );
+
+  return <AdminClient books={books.rows} results={results.rows} />;
 }
