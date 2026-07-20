@@ -1,4 +1,5 @@
 import { auth, signOut } from "@/auth";
+import { getAllBooks } from "@/lib/booklore";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -10,6 +11,14 @@ export default async function DashboardPage() {
   const isParent = user.groups?.some((g: string) =>
     ["parents", "admin"].some((k) => g.toLowerCase().includes(k))
   );
+
+  let books: Awaited<ReturnType<typeof getAllBooks>> = [];
+  let loadError = false;
+  try {
+    books = await getAllBooks("2");
+  } catch {
+    loadError = true;
+  }
 
   return (
     <div className="flex-1 px-4 py-8 max-w-4xl mx-auto w-full">
@@ -33,22 +42,41 @@ export default async function DashboardPage() {
         </form>
       </div>
 
+      {loadError && (
+        <div className="bg-red-950 border border-red-800 rounded-lg p-4 mb-6">
+          <p className="text-red-200 text-sm">
+            Couldn&apos;t load books from BookLore. Check that the Komga API is enabled.
+          </p>
+        </div>
+      )}
+
+      {books.length === 0 && !loadError && (
+        <div className="text-center py-12">
+          <p className="text-zinc-500">No books found in the Children library.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-zinc-900 rounded-lg p-4 border border-zinc-800 animate-pulse"
+        {books.map((book) => (
+          <a
+            key={book.id}
+            href={`/quiz/start?bookId=${book.id}&title=${encodeURIComponent(book.title)}&author=${encodeURIComponent(book.authors.join(", "))}`}
+            className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 hover:border-orange-500 transition-colors group"
           >
-            <div className="aspect-[2/3] bg-zinc-800 rounded mb-3" />
-            <div className="h-3 bg-zinc-800 rounded w-3/4" />
-            <div className="h-2 bg-zinc-800 rounded w-1/2 mt-2" />
-          </div>
+            <div className="aspect-[2/3] bg-zinc-800 rounded mb-3 overflow-hidden">
+              <img
+                src={`/api/books/${book.id}/cover`}
+                alt={book.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                loading="lazy"
+              />
+            </div>
+            <p className="text-sm font-medium text-zinc-200 line-clamp-2">{book.title}</p>
+            <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{book.authors.join(", ")}</p>
+            <p className="text-xs text-zinc-600 mt-0.5">{book.seriesName}</p>
+          </a>
         ))}
       </div>
-
-      <p className="text-center text-zinc-500 mt-12 text-sm">
-        Books will appear here once BookLore integration is configured.
-      </p>
 
       {isParent && (
         <div className="mt-8 pt-8 border-t border-zinc-800">
