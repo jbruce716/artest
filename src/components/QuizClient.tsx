@@ -90,13 +90,13 @@ export default function QuizClient({ questions, bookTitle, bookAuthor }: QuizCli
             <button
               key={idx}
               onClick={() => handleSelect(idx)}
-              className={`w-full text-left p-4 rounded-lg border transition-colors text-base ${
+              className={`w-full text-left p-4 rounded-lg border-2 transition-colors text-lg font-medium ${
                 selected === idx
-                  ? "border-orange-500 bg-orange-500/10 text-orange-100"
-                  : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800"
+                  ? "border-orange-500 bg-orange-500 text-white"
+                  : "border-zinc-600 bg-zinc-800 text-zinc-100 hover:border-zinc-400 hover:bg-zinc-700"
               }`}
             >
-              <span className="font-bold mr-3 text-zinc-400">{String.fromCharCode(65 + idx)}.</span>
+              <span className={`font-bold mr-3 ${selected === idx ? "text-white" : "text-zinc-300"}`}>{String.fromCharCode(65 + idx)}.</span>
               {option}
             </button>
           ))}
