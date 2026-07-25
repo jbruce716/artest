@@ -34,9 +34,26 @@ async function komgaFetch(path: string) {
   return res.json();
 }
 
+async function komgaFetchAll<T>(path: string, pageSize: number = 100): Promise<T[]> {
+  let page = 0;
+  let results: T[] = [];
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const sep = path.includes("?") ? "&" : "?";
+    const data = await komgaFetch(`${path}${sep}page=${page}&size=${pageSize}`);
+    const content = data.content || [];
+    results = results.concat(content);
+    totalPages = data.totalPages || 1;
+    page++;
+  }
+
+  return results;
+}
+
 export async function getSeries(libraryId: string = "2"): Promise<BookSeries[]> {
-  const data = await komgaFetch(`/series?library_id=${libraryId}`);
-  return (data.content || []).map((s: any) => ({
+  const all = await komgaFetchAll<any>(`/series?library_id=${libraryId}`);
+  return all.map((s: any) => ({
     id: s.id,
     name: s.metadata?.title || s.name,
     booksCount: s.booksCount || 0,
@@ -45,8 +62,8 @@ export async function getSeries(libraryId: string = "2"): Promise<BookSeries[]> 
 }
 
 export async function getBooksBySeries(seriesId: string, seriesName: string): Promise<Book[]> {
-  const data = await komgaFetch(`/series/${seriesId}/books`);
-  return (data.content || []).map((b: any) => ({
+  const all = await komgaFetchAll<any>(`/series/${seriesId}/books`);
+  return all.map((b: any) => ({
     id: b.id,
     seriesId,
     seriesName,
@@ -59,11 +76,17 @@ export async function getBooksBySeries(seriesId: string, seriesName: string): Pr
 }
 
 export async function getAllBooks(libraryId: string = "2"): Promise<Book[]> {
-  const series = await getSeries(libraryId);
-  const books = await Promise.all(
-    series.map((s) => getBooksBySeries(s.id, s.name))
-  );
-  return books.flat();
+  const all = await komgaFetchAll<any>(`/books?library_id=${libraryId}`);
+  return all.map((b: any) => ({
+    id: b.id,
+    seriesId: b.seriesId || "",
+    seriesName: b.seriesTitle || "",
+    title: b.metadata?.title || b.name,
+    authors: b.metadata?.authors?.map((a: any) => a.name) || [],
+    coverUrl: `/komga/api/v1/books/${b.id}/thumbnail`,
+    releaseDate: b.metadata?.releaseDate,
+    number: b.metadata?.number,
+  }));
 }
 
 export function coverUrl(bookId: string): string {

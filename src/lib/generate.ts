@@ -42,27 +42,38 @@ async function getBookMetadata(bookId: string): Promise<any> {
   return komgaFetch(`/books/${bookId}`);
 }
 
+async function komgaFetchAll(path: string, pageSize: number = 100): Promise<any[]> {
+  let page = 0;
+  let results: any[] = [];
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const sep = path.includes("?") ? "&" : "?";
+    const data = await komgaFetch(`${path}${sep}page=${page}&size=${pageSize}`);
+    results = results.concat(data.content || []);
+    totalPages = data.totalPages || 1;
+    page++;
+  }
+
+  return results;
+}
+
 async function getSeriesAndBooks(libraryId: string = "2"): Promise<{ series: BookSeries[]; books: Book[] }> {
-  const seriesData = await komgaFetch(`/series?library_id=${libraryId}`);
-  const series: BookSeries[] = (seriesData.content || []).map((s: any) => ({
+  const allSeries = await komgaFetchAll(`/series?library_id=${libraryId}`);
+  const series: BookSeries[] = allSeries.map((s: any) => ({
     id: s.id,
     name: s.metadata?.title || s.name,
     booksCount: s.booksCount || 0,
   }));
 
-  const books: Book[] = [];
-  for (const s of series) {
-    const bookData = await komgaFetch(`/series/${s.id}/books`);
-    for (const b of bookData.content || []) {
-      books.push({
-        id: b.id,
-        seriesId: s.id,
-        seriesName: s.name,
-        title: b.metadata?.title || b.name,
-        authors: b.metadata?.authors?.map((a: any) => a.name) || [],
-      });
-    }
-  }
+  const allBooks = await komgaFetchAll(`/books?library_id=${libraryId}`);
+  const books: Book[] = allBooks.map((b: any) => ({
+    id: b.id,
+    seriesId: b.seriesId || "",
+    seriesName: b.seriesTitle || "",
+    title: b.metadata?.title || b.name,
+    authors: b.metadata?.authors?.map((a: any) => a.name) || [],
+  }));
 
   return { series, books };
 }
