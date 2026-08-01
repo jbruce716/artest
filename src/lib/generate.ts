@@ -248,6 +248,36 @@ export async function generateAllQuizzes(): Promise<void> {
   console.log("[ARTest] All done.");
 }
 
+export async function generateNewQuizzesOnly(): Promise<{ generated: number; skipped: number }> {
+  const { books } = await getSeriesAndBooks("2");
+  console.log(`[ARTest] Polling: found ${books.length} books in Children library`);
+
+  // Get all book IDs we already have in the DB
+  const existingRes = await db.query("SELECT booklore_book_id, quiz_ready FROM artest.books");
+  const existing = new Map(existingRes.rows.map((r: any) => [r.booklore_book_id, r.quiz_ready]));
+
+  let generated = 0;
+  let skipped = 0;
+
+  for (const book of books) {
+    if (existing.get(book.id)) {
+      skipped++;
+      continue;
+    }
+
+    console.log(`[ARTest] New book detected: ${book.title} by ${book.authors.join(", ")}`);
+    try {
+      await generateQuizForBook(book.id);
+      generated++;
+    } catch (e) {
+      console.error(`[ARTest] Failed new book ${book.title}:`, e);
+    }
+  }
+
+  console.log(`[ARTest] Polling complete: ${generated} generated, ${skipped} skipped`);
+  return { generated, skipped };
+}
+
 // Run if called directly
 if (require.main === module) {
   generateAllQuizzes().catch(console.error);
